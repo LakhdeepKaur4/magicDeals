@@ -44,6 +44,7 @@ const sendReport = require('./test');
 // });
 
 router.get("/", [authJwt.verifyToken], function (req, res) {
+    console.log("===============================")
     let queryStr = 'select * from client_master';
     connection.query(queryStr, async function (err, rows) {
         if (err) {

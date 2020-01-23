@@ -25,7 +25,6 @@ const nexmo = new Nexmo({
               "streamUrl": ["https://publishadvertisement.herokuapp.com"+voicePath]
             }
           ]
-        
       }, function(err,data){
       //  console.log("VOICE *************");
       //  console.log(err,"https://publishadvertisement.herokuapp.com"+voicePath);

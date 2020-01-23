@@ -27,7 +27,6 @@ function sendSMS(numbers,message,callback){
     callback(res);
   }
   });
-  
 }
 
 function sendBulkSMS(number,message,callback){

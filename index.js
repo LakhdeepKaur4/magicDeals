@@ -5,14 +5,15 @@ var cors = require('cors');
 var sendMessage = require('./email-sender');
 var bodyParser = require('body-parser');
 const encryption = require('./encryption');
+var XLSX = require('xlsx');
 
 var jwt = require('jsonwebtoken');
 const config = require('./config');
 const authJwt = require('./auth/verifyToken');
 var clientRouter = require('./client-route');
 var cron = require('node-cron');
-const accountSid = 'ACc4feaf5fb0340caa82fe8f39fe773b50';
-const authToken = 'cbd279807600b6444a347685d87b3768';
+const accountSid = 'AC3d26dc2a4ea8697c6bb66011d1ccd7d1';
+const authToken = '718dc5b139b71d92da681da4dd37731b';
 const client = require('twilio')(accountSid, authToken);
 const logger = require('./logger');
 const path = require('path');
@@ -28,10 +29,12 @@ app.use('/public', express.static(path.resolve(__dirname, 'public')));
 app.use(cors());
 var urlencodedParser = bodyParser.urlencoded({ extended: false, parameterLimit: 100000, limit: '10mb' });
 app.use(bodyParser.json({ limit: '10mb' }));
-cronJob('0 19 15 * * *');
 
+// cronJob('0 19 15 * * *');
+//cronJob('0 */30 * * * *)
 
 function cronJob(timePattern) {
+    console.log("working")
     cron.schedule(timePattern, () => {
         const allAdvrtQuery = `select * from advt_master inner join  client_master on  client_master.client_id = advt_master.client_id`;
 
@@ -60,61 +63,61 @@ function cronJob(timePattern) {
                     //     return;
                     // }
                     const ftchPubDts = 'select *, CONVERT_TZ(from_publish_date,\'+00:00\',\'+05:30\') as from_publish_date,  CONVERT_TZ(to_publish_date,\'+00:00\',\'+05:30\') as to_publish_date from PUBLISH_DATE where advt_id = ?';
-                     connection.query(ftchPubDts, [advert.advt_id], function (err, rows) {
-                        console.log(err,rows);
-                   
+                    connection.query(ftchPubDts, [advert.advt_id], function (err, rows) {
+                        console.log(err, rows);
+
                         if (err || !rows || !rows[0]) {
-                            
+
                             return;
                         }
                         rows.forEach(row => {
-                            if(row.status == 'published'){
+                            if (row.status == 'published') {
                                 return;
                             }
-                           
+
                             let fromPublishDate = new Date(row.from_publish_date);
                             let toPublishDate = new Date(row.to_publish_date);
-                            console.log(fromPublishDate,toPublishDate);
+                            console.log(fromPublishDate, toPublishDate);
                             let allEmails = [];
-                            console.log("fromPublishDate",fromPublishDate);
-                            console.log("toPublishDate",toPublishDate);
-                            console.log("today",fromPublishDate.getMinutes(),today.getMinutes(),
+                            console.log("fromPublishDate", fromPublishDate);
+                            console.log("toPublishDate", toPublishDate);
+                            console.log("today", fromPublishDate.getMinutes(), today.getMinutes(),
                             );
-                            console.log(fromPublishDate.getDate() == today.getDate() ,
-                            fromPublishDate.getMonth() == today.getMonth() ,
-                            fromPublishDate.getFullYear() == today.getFullYear() ,
-                            ((fromPublishDate.getHours() <= today.getHours() && 
-                            toPublishDate.getHours() >= today.getHours()) ?true: 
-                            (fromPublishDate.getMinutes() <= today.getMinutes()&&
-                            toPublishDate.getMinutes() >= today.getMinutes())));
+                            console.log(fromPublishDate.getDate() == today.getDate(),
+                                fromPublishDate.getMonth() == today.getMonth(),
+                                fromPublishDate.getFullYear() == today.getFullYear(),
+                                ((fromPublishDate.getHours() <= today.getHours() &&
+                                    toPublishDate.getHours() >= today.getHours()) ? true :
+                                    (fromPublishDate.getMinutes() <= today.getMinutes() &&
+                                        toPublishDate.getMinutes() >= today.getMinutes())));
 
                             if (fromPublishDate.getDate() == today.getDate() &&
-                            fromPublishDate.getMonth() == today.getMonth() &&
-                            fromPublishDate.getFullYear() == today.getFullYear() &&
-                            ((fromPublishDate.getHours() <= today.getHours() && 
-                            toPublishDate.getHours() >= today.getHours()) ?true: (fromPublishDate.getMinutes() <= today.getMinutes() && 
-                            toPublishDate.getMinutes() >= today.getMinutes())
-                            )) {
-                                connection.query("update  PUBLISH_DATE set status = ? where advt_id = ?", 
-                                ['published',advert.advt_id],function(){
-    
-                                });
-                                console.log("allPersons",allPersons.length);
-                                console.log("advert",advert);
+                                fromPublishDate.getMonth() == today.getMonth() &&
+                                fromPublishDate.getFullYear() == today.getFullYear() &&
+                                ((fromPublishDate.getHours() <= today.getHours() &&
+                                    toPublishDate.getHours() >= today.getHours()) ? true : (fromPublishDate.getMinutes() <= today.getMinutes() &&
+                                        toPublishDate.getMinutes() >= today.getMinutes())
+                                )) {
+                                connection.query("update  PUBLISH_DATE set status = ? where advt_id = ?",
+                                    ['published', advert.advt_id], function () {
+
+                                    });
+                                console.log("allPersons", allPersons.length);
+                                console.log("advert", advert);
                                 let selectedPersons = allPersons.filter(person => {
-                                    if(person.firstname == "test"){
-                                        console.log("blockids",advert.block_ids.split(","),person.block_id);
-                                        console.log("locationids",advert.location_ids.split(","),person.location_id);
-                                        console.log("age",person.age,advert.age_from,advert.age_to );
+                                    if (person.firstname == "test") {
+                                        console.log("blockids", advert.block_ids.split(","), person.block_id);
+                                        console.log("locationids", advert.location_ids.split(","), person.location_id);
+                                        console.log("age", person.age, advert.age_from, advert.age_to);
                                     }
                                     return (
-                                        advert.block_ids.split(",").map(n=>+n).includes(+person.block_id)
-                                        && advert.location_ids.split(",").map(n=>+n).includes(+person.location_id)
-                                        && (advert.age_from ?advert.age_from <= person.age:true) &&
-                                        (advert.age_to ? person.age <= advert.age_to :true)
+                                        advert.block_ids.split(",").map(n => +n).includes(+person.block_id)
+                                        && advert.location_ids.split(",").map(n => +n).includes(+person.location_id)
+                                        && (advert.age_from ? advert.age_from <= person.age : true) &&
+                                        (advert.age_to ? person.age <= advert.age_to : true)
                                     );
                                 });
-                                console.log("selectedPersons",selectedPersons);
+                                console.log("selectedPersons", selectedPersons);
                                 selectedPersons.forEach(person => {
 
                                     if (person.mobile_number1 && advert.type.includes("voice")) {
@@ -130,8 +133,8 @@ function cronJob(timePattern) {
                                                 admin_user_name: advert.admin_user_name,
                                                 subject: encryption.decrypt(advert.advt_subject),
                                                 message: encryption.decrypt(advert.advt_details),
-                                                from_publish_date:fromPublishDate.toISOString(),
-                                                to_publish_date:toPublishDate.toISOString(),
+                                                from_publish_date: fromPublishDate.toISOString(),
+                                                to_publish_date: toPublishDate.toISOString(),
                                                 type: 'voice'
                                             };
                                             let phone_number = encryption.decrypt(person.mobile_number1);
@@ -158,8 +161,8 @@ function cronJob(timePattern) {
                                             admin_user_name: advert.admin_user_name,
                                             subject: encryption.decrypt(advert.advt_subject),
                                             message: encryption.decrypt(advert.advt_details),
-                                            from_publish_date:fromPublishDate.toISOString(),
-                                            to_publish_date:toPublishDate.toISOString(),
+                                            from_publish_date: fromPublishDate.toISOString(),
+                                            to_publish_date: toPublishDate.toISOString(),
                                             type: 'message'
                                         };
                                         let phone_number = encryption.decrypt(person.mobile_number1);
@@ -212,8 +215,8 @@ function cronJob(timePattern) {
                                                 admin_user_name: advert.admin_user_name,
                                                 subject: encryption.decrypt(advert.advt_subject),
                                                 message: encryption.decrypt(advert.advt_details),
-                                                from_publish_date:fromPublishDate.toISOString(),
-                                                to_publish_date:toPublishDate.toISOString(),
+                                                from_publish_date: fromPublishDate.toISOString(),
+                                                to_publish_date: toPublishDate.toISOString(),
                                                 type: 'email'
                                             };
                                             allEmails.forEach((email_address) => {
@@ -236,9 +239,9 @@ function cronJob(timePattern) {
             });
         });
     }, {
-            scheduled: true,
-            timezone: "Asia/Kolkata"
-        });
+        scheduled: true,
+        timezone: "Asia/Kolkata"
+    });
 }
 
 connection.connect((err) => {
@@ -307,42 +310,42 @@ app.get('/api/getBlock', [authJwt.verifyToken], (req, res) => {
     })
 });
 
-app.delete("/api/block/:id",[authJwt.verifyToken],(req,res) => {
-    connection.query("delete from block_master where block_id = ?",[req.params.id],function(err,rows){
-        if(err){
-            return res.status(401).send({message:"Can not delete record."});
+app.delete("/api/block/:id", [authJwt.verifyToken], (req, res) => {
+    connection.query("delete from block_master where block_id = ?", [req.params.id], function (err, rows) {
+        if (err) {
+            return res.status(401).send({ message: "Can not delete record." });
         }
-        return res.send({message:'Deleted record'});
+        return res.send({ message: 'Deleted record' });
     });
 });
 
-app.post("/api/block",[authJwt.verifyToken],(req,res) => {       
-        let body = {
-            blockname:req.body.blockname,
-            username:req.username
+app.post("/api/block", [authJwt.verifyToken], (req, res) => {
+    let body = {
+        blockname: req.body.blockname,
+        username: req.username
+    }
+    connection.query("insert into block_master set ? ", body, function (err, rows) {
+        if (err) {
+            return res.status(401).send({ message: 'Not Inserted block record', err });
         }
-        connection.query("insert into block_master set ? ",body,function(err,rows){
-            if(err){
-                return res.status(401).send({message:'Not Inserted block record',err});
+        else {
+            return res.send({ message: 'Added Records', block_id: rows.insertId });
+        }
+    });
+});
+
+
+app.put('/api/block/:id', [authJwt.verifyToken], (req, res) => {
+
+    connection.query("update block_master SET blockname = ? where block_id = ?", [req.body.blockname, req.params.id],
+        function (err, rows) {
+            if (err) {
+                return res.status(401).send({ message: 'Record Not inserted', err });
             }
-            else{
-                return res.send({message:'Added Records',block_id:rows.insertId});
+            else {
+                return res.send({ message: 'Update block records' });
             }
         });
-});
-
-
-app.put('/api/block/:id',[authJwt.verifyToken],(req,res) => {
-
-    connection.query("update block_master SET blockname = ? where block_id = ?",[req.body.blockname,req.params.id],
-    function(err,rows){
-        if(err){
-            return res.status(401).send({message:'Record Not inserted',err});
-        }
-        else{
-            return res.send({message:'Update block records'});
-        }
-    });
 });
 
 ////////////////// get location ///////////////////////
@@ -401,48 +404,48 @@ app.get('/api/getCountryDetails', [authJwt.verifyToken], (req, res) => {
     })
 });
 
-app.delete("/api/country/:id",[authJwt.verifyToken],(req,res) => {
-    connection.query("delete from country_master where country_id = ?",[req.params.id],function(err,rows){
-        if(err){
-            return res.status(401).send({message:"Can not delete record."});
+app.delete("/api/country/:id", [authJwt.verifyToken], (req, res) => {
+    connection.query("delete from country_master where country_id = ?", [req.params.id], function (err, rows) {
+        if (err) {
+            return res.status(401).send({ message: "Can not delete record." });
         }
-        return res.send({message:'Deleted record'});
+        return res.send({ message: 'Deleted record' });
     });
 });
 
-app.post("/api/country",[authJwt.verifyToken],(req,res) => {    
-    connection.query("select max(country_id) as country_id from country_master",function(err,row){       
-        if(err || !row[0]){
-            return res.status(401).send({message:'Not Inserted country record'});
+app.post("/api/country", [authJwt.verifyToken], (req, res) => {
+    connection.query("select max(country_id) as country_id from country_master", function (err, row) {
+        if (err || !row[0]) {
+            return res.status(401).send({ message: 'Not Inserted country record' });
         }
         let body = {
-            country_name:req.body.country_name,
-            counrty_code:req.body.counrty_code,
-            country_id:row[0].country_id+1
+            country_name: req.body.country_name,
+            counrty_code: req.body.counrty_code,
+            country_id: row[0].country_id + 1
         }
-        connection.query("insert into country_master set ?",body,function(err,rows){
-            if(err){
-                return res.status(401).send({message:'Not Inserted country record',err});
+        connection.query("insert into country_master set ?", body, function (err, rows) {
+            if (err) {
+                return res.status(401).send({ message: 'Not Inserted country record', err });
             }
-            else{
-                return res.send({message:'Added Records',country_id:body.country_id});
+            else {
+                return res.send({ message: 'Added Records', country_id: body.country_id });
             }
         });
     });
-  
+
 });
 
-app.put('/api/country/:id',[authJwt.verifyToken],(req,res) => {
+app.put('/api/country/:id', [authJwt.verifyToken], (req, res) => {
 
-    connection.query("update country_master SET country_name = ?, counrty_code = ? where country_id = ?",[req.body.country_name,req.body.counrty_code,req.params.id],
-    function(err,rows){
-        if(err){
-            return res.status(401).send({message:'Record Not inserted',err});
-        }
-        else{
-            return res.send({message:'Update country records'});
-        }
-    });
+    connection.query("update country_master SET country_name = ?, counrty_code = ? where country_id = ?", [req.body.country_name, req.body.counrty_code, req.params.id],
+        function (err, rows) {
+            if (err) {
+                return res.status(401).send({ message: 'Record Not inserted', err });
+            }
+            else {
+                return res.send({ message: 'Update country records' });
+            }
+        });
 });
 
 // get State
@@ -459,7 +462,7 @@ app.get('/api/getState', [authJwt.verifyToken], (req, res) => {
 /* state master */
 
 app.get('/api/getState/:id', [authJwt.verifyToken], (req, res) => {
-    connection.query('select * from state_master where country_id = ?',[req.params.id], (err, result) => {
+    connection.query('select * from state_master where country_id = ?', [req.params.id], (err, result) => {
         if (err) throw err;
         else {
             res.json(result)
@@ -468,46 +471,46 @@ app.get('/api/getState/:id', [authJwt.verifyToken], (req, res) => {
     })
 });
 
-app.delete("/api/state/:id",[authJwt.verifyToken],(req,res) => {
-    connection.query("delete from state_master where state_id = ?",[req.params.id],function(err,rows){
-        if(err){
-            return res.status(401).send({message:"Can not delete record."});
+app.delete("/api/state/:id", [authJwt.verifyToken], (req, res) => {
+    connection.query("delete from state_master where state_id = ?", [req.params.id], function (err, rows) {
+        if (err) {
+            return res.status(401).send({ message: "Can not delete record." });
         }
-        return res.send({message:'Deleted record'});
+        return res.send({ message: 'Deleted record' });
     });
 });
 
-app.post("/api/state",[authJwt.verifyToken],(req,res) => {    
-       let body = {
-            statename:req.body.statename,
-            country_id: req.body.country_id
+app.post("/api/state", [authJwt.verifyToken], (req, res) => {
+    let body = {
+        statename: req.body.statename,
+        country_id: req.body.country_id
+    }
+    connection.query("insert into state_master set ? ", body, function (err, rows) {
+        if (err) {
+            return res.status(401).send({ message: 'Not Inserted state record', err });
         }
-        connection.query("insert into state_master set ? ",body,function(err,rows){
-            if(err){
-                return res.status(401).send({message:'Not Inserted state record',err});
+        else {
+            return res.send({ message: 'Added Records', state_id: rows.insertId });
+        }
+    });
+});
+
+app.put('/api/state/:id', [authJwt.verifyToken], (req, res) => {
+
+    connection.query("update state_master SET statename = ? where state_id = ?", [req.body.state_name, req.params.id],
+        function (err, rows) {
+            if (err) {
+                return res.status(401).send({ message: 'Record Not inserted', err });
             }
-            else{
-                return res.send({message:'Added Records',state_id:rows.insertId});
+            else {
+                return res.send({ message: 'Update state records' });
             }
         });
 });
 
-app.put('/api/state/:id',[authJwt.verifyToken],(req,res) => {
-
-    connection.query("update state_master SET statename = ? where state_id = ?",[req.body.state_name,req.params.id],
-    function(err,rows){
-        if(err){
-            return res.status(401).send({message:'Record Not inserted',err});
-        }
-        else{
-            return res.send({message:'Update state records'});
-        }
-    });
-});
-
 // get District
 app.get('/api/district', [authJwt.verifyToken], (req, res) => {
-    connection.query('select * from district_master',(err, result) => {
+    connection.query('select * from district_master', (err, result) => {
         if (err) throw err;
         else {
             res.json(result)
@@ -517,7 +520,7 @@ app.get('/api/district', [authJwt.verifyToken], (req, res) => {
 });
 // get District
 app.get('/api/district/:id', [authJwt.verifyToken], (req, res) => {
-    connection.query('select * from district_master where state_id = ?',[req.params.id],(err, result) => {
+    connection.query('select * from district_master where state_id = ?', [req.params.id], (err, result) => {
         if (err) throw err;
         else {
             res.json(result)
@@ -526,41 +529,41 @@ app.get('/api/district/:id', [authJwt.verifyToken], (req, res) => {
     })
 });
 
-app.post("/api/district",[authJwt.verifyToken],(req,res) => {    
+app.post("/api/district", [authJwt.verifyToken], (req, res) => {
     let body = {
-         district_name:req.body.district_name,
-         state_id: req.body.state_id
-     };
-     connection.query("insert into district_master set ? ",body,function(err,rows){
-         if(err){
-             return res.status(401).send({message:'Not Inserted district record',err});
-         }
-         else{
-             return res.send({message:'Added Records',district_id:rows.insertId});
-         }
-     });
-});
-
-app.delete("/api/district/:id",[authJwt.verifyToken],(req,res) => {
-    connection.query("delete from district_master where district_id = ?",[req.params.id],function(err,rows){
-        if(err){
-            return res.status(401).send({message:"Can not delete record."});
+        district_name: req.body.district_name,
+        state_id: req.body.state_id
+    };
+    connection.query("insert into district_master set ? ", body, function (err, rows) {
+        if (err) {
+            return res.status(401).send({ message: 'Not Inserted district record', err });
         }
-        return res.send({message:'Deleted record'});
+        else {
+            return res.send({ message: 'Added Records', district_id: rows.insertId });
+        }
     });
 });
 
-app.put('/api/district/:id',[authJwt.verifyToken],(req,res) => {
-
-    connection.query("update district_master SET district_name = ? where district_id = ?",[req.body.district_name,req.params.id],
-    function(err,rows){
-        if(err){
-            return res.status(401).send({message:'Record Not inserted',err});
+app.delete("/api/district/:id", [authJwt.verifyToken], (req, res) => {
+    connection.query("delete from district_master where district_id = ?", [req.params.id], function (err, rows) {
+        if (err) {
+            return res.status(401).send({ message: "Can not delete record." });
         }
-        else{
-            return res.send({message:'Update district records'});
-        }
+        return res.send({ message: 'Deleted record' });
     });
+});
+
+app.put('/api/district/:id', [authJwt.verifyToken], (req, res) => {
+
+    connection.query("update district_master SET district_name = ? where district_id = ?", [req.body.district_name, req.params.id],
+        function (err, rows) {
+            if (err) {
+                return res.status(401).send({ message: 'Record Not inserted', err });
+            }
+            else {
+                return res.send({ message: 'Update district records' });
+            }
+        });
 });
 
 
@@ -578,7 +581,7 @@ app.get('/api/getCities', [authJwt.verifyToken], (req, res) => {
 
 // get city
 app.get('/api/getCities/:id', [authJwt.verifyToken], (req, res) => {
-    connection.query('select * from city_master where district_id = ?',[req.params.id], (err, result) => {
+    connection.query('select * from city_master where district_id = ?', [req.params.id], (err, result) => {
         if (err) throw err;
         else {
             res.json(result)
@@ -587,43 +590,43 @@ app.get('/api/getCities/:id', [authJwt.verifyToken], (req, res) => {
     })
 })
 
-app.delete("/api/city/:id",[authJwt.verifyToken],(req,res) => {
-    connection.query("delete from city_master where city_id = ?",[req.params.id],function(err,rows){
-        if(err){
-            return res.status(401).send({message:"Can not delete record."});
+app.delete("/api/city/:id", [authJwt.verifyToken], (req, res) => {
+    connection.query("delete from city_master where city_id = ?", [req.params.id], function (err, rows) {
+        if (err) {
+            return res.status(401).send({ message: "Can not delete record." });
         }
-        return res.send({message:'Deleted record'});
+        return res.send({ message: 'Deleted record' });
     });
 });
 
-app.post("/api/city",[authJwt.verifyToken],(req,res) => {       
-        let body = {
-            cityname:req.body.cityname,
-            district_id:req.body.district_id,
-            username:req.username
+app.post("/api/city", [authJwt.verifyToken], (req, res) => {
+    let body = {
+        cityname: req.body.cityname,
+        district_id: req.body.district_id,
+        username: req.username
+    }
+    connection.query("insert into city_master set ? ", body, function (err, rows) {
+        if (err) {
+            return res.status(401).send({ message: 'Not Inserted city record', err });
         }
-        connection.query("insert into city_master set ? ",body,function(err,rows){
-            if(err){
-                return res.status(401).send({message:'Not Inserted city record',err});
+        else {
+            return res.send({ message: 'Added Records', city_id: rows.insertId });
+        }
+    });
+});
+
+
+app.put('/api/city/:id', [authJwt.verifyToken], (req, res) => {
+
+    connection.query("update city_master SET cityname = ? where city_id = ?", [req.body.cityname, req.params.id],
+        function (err, rows) {
+            if (err) {
+                return res.status(401).send({ message: 'Record Not inserted', err });
             }
-            else{
-                return res.send({message:'Added Records',city_id:rows.insertId});
+            else {
+                return res.send({ message: 'Update city records' });
             }
         });
-});
-
-
-app.put('/api/city/:id',[authJwt.verifyToken],(req,res) => {
-
-    connection.query("update city_master SET cityname = ? where city_id = ?",[req.body.cityname,req.params.id],
-    function(err,rows){
-        if(err){
-            return res.status(401).send({message:'Record Not inserted',err});
-        }
-        else{
-            return res.send({message:'Update city records'});
-        }
-    });
 });
 
 
@@ -642,7 +645,7 @@ app.get('/api/getLocation', [authJwt.verifyToken], (req, res) => {
 
 // get location
 app.get('/api/getLocation/:id', [authJwt.verifyToken], (req, res) => {
-    connection.query('select * from location_master where city_id = ?',[req.params.id], (err, result) => {
+    connection.query('select * from location_master where city_id = ?', [req.params.id], (err, result) => {
         if (err) throw err;
         else {
             res.json(result)
@@ -651,51 +654,51 @@ app.get('/api/getLocation/:id', [authJwt.verifyToken], (req, res) => {
     })
 });
 
-app.delete("/api/location/:id",[authJwt.verifyToken],(req,res) => {
-    connection.query("delete from location_master where location_id = ?",[req.params.id],function(err,rows){
-        if(err){
-            return res.status(401).send({message:"Can not delete record."});
+app.delete("/api/location/:id", [authJwt.verifyToken], (req, res) => {
+    connection.query("delete from location_master where location_id = ?", [req.params.id], function (err, rows) {
+        if (err) {
+            return res.status(401).send({ message: "Can not delete record." });
         }
-        return res.send({message:'Deleted record'});
+        return res.send({ message: 'Deleted record' });
     });
 });
 
-app.post("/api/location",[authJwt.verifyToken],(req,res) => {    
-    connection.query("select max(location_id) as location_id from location_master",function(err,row){       
-        if(err || !row[0]){
-            return res.status(401).send({message:'Not Inserted lcoation record 1'});
+app.post("/api/location", [authJwt.verifyToken], (req, res) => {
+    connection.query("select max(location_id) as location_id from location_master", function (err, row) {
+        if (err || !row[0]) {
+            return res.status(401).send({ message: 'Not Inserted lcoation record 1' });
         }
         let body = {
-            location_name:req.body.location_name,
-            country_id:req.body.country_id,
-            state_id:req.body.state_id,
-            city_id:req.body.city_id,
-            location_id:row[0].location_id+1,
-            username:req.username
+            location_name: req.body.location_name,
+            country_id: req.body.country_id,
+            state_id: req.body.state_id,
+            city_id: req.body.city_id,
+            location_id: row[0].location_id + 1,
+            username: req.username
         }
-        connection.query("insert into location_master set ? ",body,function(err,rows){
-            if(err){
-                return res.status(401).send({message:'Not Inserted location record',err});
+        connection.query("insert into location_master set ? ", body, function (err, rows) {
+            if (err) {
+                return res.status(401).send({ message: 'Not Inserted location record', err });
             }
-            else{
-                return res.send({message:'Added Records',location_id:body.location_id});
+            else {
+                return res.send({ message: 'Added Records', location_id: body.location_id });
             }
         });
     });
-  
+
 });
 
-app.put('/api/location/:id',[authJwt.verifyToken],(req,res) => {
+app.put('/api/location/:id', [authJwt.verifyToken], (req, res) => {
 
-    connection.query("update location_master SET location_name = ? where location_id = ?",[req.body.location_name,req.params.id],
-    function(err,rows){
-        if(err){
-            return res.status(401).send({message:'Record Not inserted',err});
-        }
-        else{
-            return res.send({message:'Update location records'});
-        }
-    });
+    connection.query("update location_master SET location_name = ? where location_id = ?", [req.body.location_name, req.params.id],
+        function (err, rows) {
+            if (err) {
+                return res.status(401).send({ message: 'Record Not inserted', err });
+            }
+            else {
+                return res.send({ message: 'Update location records' });
+            }
+        });
 });
 
 ////////////////////get floor ////////////////////////
@@ -710,48 +713,48 @@ app.get('/api/getFloor', [authJwt.verifyToken], (req, res) => {
     })
 });
 
-app.delete("/api/floor/:id",[authJwt.verifyToken],(req,res) => {
-    connection.query("delete from floor_master where floor_id = ?",[req.params.id],function(err,rows){
-        if(err){
-            return res.status(401).send({message:"Can not delete record."});
+app.delete("/api/floor/:id", [authJwt.verifyToken], (req, res) => {
+    connection.query("delete from floor_master where floor_id = ?", [req.params.id], function (err, rows) {
+        if (err) {
+            return res.status(401).send({ message: "Can not delete record." });
         }
-        return res.send({message:'Deleted record'});
+        return res.send({ message: 'Deleted record' });
     });
 });
 
-app.post("/api/floor",[authJwt.verifyToken],(req,res) => {    
-    connection.query("select max(floor_id) as floor_id from floor_master",function(err,row){       
-        if(err || !row[0]){
-            return res.status(401).send({message:'Not Inserted floor record'});
+app.post("/api/floor", [authJwt.verifyToken], (req, res) => {
+    connection.query("select max(floor_id) as floor_id from floor_master", function (err, row) {
+        if (err || !row[0]) {
+            return res.status(401).send({ message: 'Not Inserted floor record' });
         }
         let body = {
-            floor_type:req.body.floor_type,
-            floor_id:row[0].floor_id+1,
-            username:req.username
+            floor_type: req.body.floor_type,
+            floor_id: row[0].floor_id + 1,
+            username: req.username
         }
-        connection.query("insert into floor_master set ? ",body,function(err,rows){
-            if(err){
-                return res.status(401).send({message:'Not Inserted floor record',err});
+        connection.query("insert into floor_master set ? ", body, function (err, rows) {
+            if (err) {
+                return res.status(401).send({ message: 'Not Inserted floor record', err });
             }
-            else{
-                return res.send({message:'Added Records',floor_id:body.floor_id});
+            else {
+                return res.send({ message: 'Added Records', floor_id: body.floor_id });
             }
         });
     });
-  
+
 });
 
-app.put('/api/floor/:id',[authJwt.verifyToken],(req,res) => {
+app.put('/api/floor/:id', [authJwt.verifyToken], (req, res) => {
 
-    connection.query("update floor_master SET floor_type = ? where floor_id = ?",[req.body.floor_type,req.params.id],
-    function(err,rows){
-        if(err){
-            return res.status(401).send({message:'Record Not inserted',err});
-        }
-        else{
-            return res.send({message:'Update floor records'});
-        }
-    });
+    connection.query("update floor_master SET floor_type = ? where floor_id = ?", [req.body.floor_type, req.params.id],
+        function (err, rows) {
+            if (err) {
+                return res.status(401).send({ message: 'Record Not inserted', err });
+            }
+            else {
+                return res.send({ message: 'Update floor records' });
+            }
+        });
 });
 
 
@@ -764,14 +767,14 @@ app.get('/api/getPerson', [authJwt.verifyToken], (req, res) => {
         else {
             const resArr = [];
             result.map(item => {
-                console.log(item.firstname);
+                // console.log(item.firstname);
                 item.firstname = encryption.decrypt((item.firstname).toString());
                 item.middlename = item.middlename ? encryption.decrypt(item.middlename) : item.middlename,
-                item.lastname = item.lastname?encryption.decrypt(item.lastname):item.lastname;
-                item.address = item.address?encryption.decrypt(item.address):item.address;
-                item.gender = encryption.decrypt(item.gender);
-                item.mobile_number1 = encryption.decrypt(item.mobile_number1);
-                item.mobile_number2 = item.mobile_number2?encryption.decrypt(item.mobile_number2):'';
+                    item.lastname = item.lastname ? encryption.decrypt(item.lastname) : item.lastname;
+                item.address = item.address ? encryption.decrypt(item.address) : item.address;
+                item.gender = item.gender ? encryption.decrypt(item.gender) : '';
+                item.mobile_number1 = item.mobile_number1 ? encryption.decrypt(item.mobile_number1) : '';
+                item.mobile_number2 = item.mobile_number2 ? encryption.decrypt(item.mobile_number2) : '';
                 resArr.push(item);
             });
             res.json(resArr);
@@ -789,11 +792,11 @@ app.get('/api/getPersonData/:id', [authJwt.verifyToken], (req, res) => {
                 data = result[0];
                 data.firstname = encryption.decrypt(data.firstname);
                 data.middlename = data.middlename ? encryption.decrypt(data.middlename) : data.middlename,
-                data.lastname = data.lastname ? encryption.decrypt(data.lastname) : data.lastname;
-                data.address = data.address?encryption.decrypt(data.address):data.address;
+                    data.lastname = data.lastname ? encryption.decrypt(data.lastname) : data.lastname;
+                data.address = data.address ? encryption.decrypt(data.address) : data.address;
                 data.gender = encryption.decrypt(data.gender);
                 data.mobile_number1 = encryption.decrypt(data.mobile_number1);
-                data.mobile_number2 = data.mobile_number2?encryption.decrypt(data.mobile_number2):'';
+                data.mobile_number2 = data.mobile_number2 ? encryption.decrypt(data.mobile_number2) : '';
             }
             res.json(
                 { data })
@@ -807,32 +810,32 @@ app.post('/api/advtPerson', [authJwt.verifyToken], urlencodedParser, function (r
     var personDetails = {
         firstname: encryption.encrypt(req.body.firstname),
         middlename: req.body.middlename ? encryption.encrypt(req.body.middlename) : req.body.middlename,
-        lastname: req.body.lastname? encryption.encrypt(req.body.lastname) : req.body.lastname,
+        lastname: req.body.lastname ? encryption.encrypt(req.body.lastname) : req.body.lastname,
         country_id: req.body.country_id,
         state_id: req.body.state_id,
         district_id: req.body.district_id,
         city_id: req.body.city_id,
         block_id: req.body.block_id,
-        address: req.body.address?encryption.encrypt(req.body.address):req.body.address,
-        location_id: req.body.location_id,               
+        address: req.body.address ? encryption.encrypt(req.body.address) : req.body.address,
+        location_id: req.body.location_id,
         gender: encryption.encrypt(req.body.gender),
         mobile_number1: encryption.encrypt(req.body.mobile_number1),
-        mobile_number2: req.body.mobile_number2?encryption.encrypt(req.body.mobile_number2):'',
-        username: req.username,       
+        mobile_number2: req.body.mobile_number2 ? encryption.encrypt(req.body.mobile_number2) : '',
+        username: req.username,
         creation_date: req.body.creation_date
     }
 
-    if(req.body.floor_id){
+    if (req.body.floor_id) {
         personDetails.floor_id = req.body.floor_id;
     }
-    if(req.body.pincode){
+    if (req.body.pincode) {
         personDetails.pincode = req.body.pincode;
     }
-    if(req.body.email_id){
+    if (req.body.email_id) {
         personDetails.email_id = req.body.email_id;
     }
 
-    if(req.body.date_of_birth){
+    if (req.body.date_of_birth) {
         personDetails.date_of_birth = req.body.date_of_birth;
     }
 
@@ -891,7 +894,7 @@ app.put('/api/updatePerson/:person_id', [authJwt.verifyToken], urlencodedParser,
     connection.query(query, [
         encryption.encrypt(req.body.firstname),
         req.body.middlename ? encryption.encrypt(req.body.middlename) : req.body.middlename,
-        req.body.lastname ? encryption.encrypt(req.body.lastname): req.body.lastname,
+        req.body.lastname ? encryption.encrypt(req.body.lastname) : req.body.lastname,
         req.body.country_id,
         req.body.state_id,
         req.body.district_id,
@@ -904,7 +907,7 @@ app.put('/api/updatePerson/:person_id', [authJwt.verifyToken], urlencodedParser,
         req.body.date_of_birth,
         encryption.encrypt(req.body.gender),
         encryption.encrypt(req.body.mobile_number1),
-        req.body.mobile_number2?encryption.encrypt(req.body.mobile_number2):'',
+        req.body.mobile_number2 ? encryption.encrypt(req.body.mobile_number2) : '',
         req.params.person_id], function (err, result) {
             if (err) {
                 res.status(401).json({
@@ -931,13 +934,13 @@ app.delete('/api/deletePerson/:id', [authJwt.verifyToken], function (req, res) {
         if (error) {
             ////console.log('Error in query');
             res.status(401).send({
-                error:true,
-                message:"Person Not Found"
+                error: true,
+                message: "Person Not Found"
             });
             return;
         }
         else {
-            res.send({message:'Record has been deleted'});
+            res.send({ message: 'Record has been deleted' });
         }
     })
 })
@@ -957,8 +960,8 @@ app.get('/api/getAdvts', [authJwt.verifyToken], (req, res) => {
                     result = result.filter(item => {
                         return item.email_address == req.username
                     }
-                    ).map( item => {
-                        console.log("item",item);
+                    ).map(item => {
+                        console.log("item", item);
                         let publish_dates = fetchPublishDates(item);
                         console.log("publish_dates", publish_dates);
 
@@ -974,8 +977,8 @@ app.get('/api/getAdvts', [authJwt.verifyToken], (req, res) => {
                                 registration_details: encryption.decrypt(item.registration_details),
                                 representative_name: encryption.decrypt(item.representative_name),
                                 type: item.type.split(","),
-                                location_ids: item.location_ids.split(",").map(n=>+n),
-                                block_ids: item.block_ids.split(",").map(n=>+n)
+                                location_ids: item.location_ids.split(",").map(n => +n),
+                                block_ids: item.block_ids.split(",").map(n => +n)
                             }
                         );
                     })
@@ -992,7 +995,7 @@ app.get('/api/getAdvts', [authJwt.verifyToken], (req, res) => {
                 console.log(err);
             }
             else {
-                if(!result || !result[0]){
+                if (!result || !result[0]) {
                     res.send([])
                     return;
                 }
@@ -1004,16 +1007,16 @@ app.get('/api/getAdvts', [authJwt.verifyToken], (req, res) => {
                 connection.query('select * from advt_master inner join client_master on  client_master.client_id = advt_master.client_id where client_master.client_id in (?)', [validClientIds], (err, result) => {
                     if (err) {
                         res.status(401).send({
-                            error:true,
+                            error: true,
                             err,
-                            message:'Error'
+                            message: 'Error'
                         });
                         return;
                     }
                     else {
                         ////console.log(result);
                         if (result) {
-                            result = result.map(  item => {
+                            result = result.map(item => {
                                 let publish_dates = fetchPublishDates(item);
                                 return (
                                     {
@@ -1026,8 +1029,8 @@ app.get('/api/getAdvts', [authJwt.verifyToken], (req, res) => {
                                         registration_details: encryption.decrypt(item.registration_details),
                                         representative_name: encryption.decrypt(item.representative_name),
                                         type: item.type.split(","),
-                                        location_ids: item.location_ids.split(",").map(n=>+n),
-                                        block_ids: item.block_ids.split(",").map(n=>+n),
+                                        location_ids: item.location_ids.split(",").map(n => +n),
+                                        block_ids: item.block_ids.split(",").map(n => +n),
                                         publish_dates
                                     }
                                 );
@@ -1042,7 +1045,7 @@ app.get('/api/getAdvts', [authJwt.verifyToken], (req, res) => {
 
 });
 
-async function  fetchPublishDates(item){
+async function fetchPublishDates(item) {
     console.log("11111111111");
     let results = await new Promise((resolve, reject) => {
         const query = 'select *, CONVERT_TZ(from_publish_date,\'+00:00\',\'+05:30\') as from_publish_date,  CONVERT_TZ(to_publish_date,\'+00:00\',\'+05:30\') as to_publish_date from PUBLISH_DATE where advt_id = ?';
@@ -1053,7 +1056,7 @@ async function  fetchPublishDates(item){
                 return;
             }
             let publish_dates = [];
-          
+
             rows.forEach(row => {
                 // let offset = '+5.5'
                 // let d = new Date(row.from_publish_date);
@@ -1064,7 +1067,7 @@ async function  fetchPublishDates(item){
                 // utc = d.getTime() + (d.getTimezoneOffset() * 60000);
                 // nd = new Date(utc + (3600000 * offset));
                 // let to_publish_date = nd;
-                console.log("row",row);
+                console.log("row", row);
                 let from_publish_date = row.from_publish_date;
                 let to_publish_date = row.to_publish_date;
                 publish_dates.push({
@@ -1075,14 +1078,14 @@ async function  fetchPublishDates(item){
             resolve(publish_dates);
         });
     });
-    console.log("results",results);
+    console.log("results", results);
     console.log("2222222222222");
     return results;
 }
 
-app.get('/api/getAdvt/:id', [authJwt.verifyToken],  (req, res) => {
+app.get('/api/getAdvt/:id', [authJwt.verifyToken], (req, res) => {
 
-    connection.query('select * from client_master inner join advt_master on client_master.client_id= advt_master.client_id where advt_master.advt_id = ?', [req.params.id],async (err, result) => {
+    connection.query('select * from client_master inner join advt_master on client_master.client_id= advt_master.client_id where advt_master.advt_id = ?', [req.params.id], async (err, result) => {
         if (err) throw err;
         else {
             if (!result[0] ||
@@ -1108,11 +1111,11 @@ app.get('/api/getAdvt/:id', [authJwt.verifyToken],  (req, res) => {
                 data.registration_details = encryption.decrypt(data.registration_details);
                 data.representative_name = encryption.decrypt(data.representative_name);
                 data.type = data.type.split(",");
-                data.block_ids = data.block_ids.split(",").map(n=>+n);
-                data.location_ids = data.location_ids.split(",").map(n=>+n);
+                data.block_ids = data.block_ids.split(",").map(n => +n);
+                data.location_ids = data.location_ids.split(",").map(n => +n);
                 console.log("IN");
                 data.publish_dates = await fetchPublishDates(data);
-                console.log("OUT",data.publish_dates);
+                console.log("OUT", data.publish_dates);
             }
 
             // const query = 'select * from PUBLISH_DATE where advt_id = ?';
@@ -1133,12 +1136,12 @@ app.get('/api/getAdvt/:id', [authJwt.verifyToken],  (req, res) => {
             //         });
             //     });
             //     console.log("publish_dates",publish_dates);
-               
+
             // });
 
             res.send(
                 { data: result[0] })
-           
+
         }
     })
 });
@@ -1171,7 +1174,7 @@ app.post('/api/addAdvt', [authJwt.verifyToken], urlencodedParser, function (req,
         advt_details: encryption.encrypt(req.body.advt_details),
         country_id: req.body.country_id,
         state_id: req.body.state_id,
-        district_id:req.body.district_id,
+        district_id: req.body.district_id,
         city_id: req.body.city_id,
         location_ids: req.body.location_ids.join(","),
         block_ids: req.body.block_ids.join(","),
@@ -1194,6 +1197,7 @@ app.post('/api/addAdvt', [authJwt.verifyToken], urlencodedParser, function (req,
         let client_record = rows[0];
 
         if (req.body.type.includes("voice")) {
+            console.log("________")
             if (!req.body.voiceData) {
                 res.status(401).send({
                     error: true,
@@ -1217,12 +1221,12 @@ app.post('/api/addAdvt', [authJwt.verifyToken], urlencodedParser, function (req,
                     req.body.publish_dates.forEach(date => {
                         publish_date_record.push([
                             advt_id,
-                             date.from_publish_date,
-                             date.to_publish_date
+                            date.from_publish_date,
+                            date.to_publish_date
                         ]);
                     });
                     connection.query(publish_date_query, [publish_date_record], function (err, rows) {
-                        console.log("erR",err);
+                        console.log("erR", err);
                         if (err) {
                             connection.query('delete from advt_master where advt_id = ?', [advt_id], function (err, rows) {
                                 res.status(401).send({
@@ -1261,8 +1265,8 @@ app.post('/api/addAdvt', [authJwt.verifyToken], urlencodedParser, function (req,
             req.body.publish_dates.forEach(date => {
                 publish_date_record.push([
                     advt_id,
-                     date.from_publish_date,
-                     date.to_publish_date
+                    date.from_publish_date,
+                    date.to_publish_date
                 ]);
             });
             connection.query(publish_date_query, [publish_date_record], function (err, rows) {
@@ -1295,19 +1299,19 @@ app.post('/api/addAdvt', [authJwt.verifyToken], urlencodedParser, function (req,
 ////////////////////////////////////////////////UPDATE ADVT/////////////////////////////////////////////////////////
 app.put('/api/updateStatuAdvt/:id', [authJwt.verifyToken], urlencodedParser, function (req, res) {
     var sql = "update advt_master set ? where advt_id=" + req.params.id;
-    connection.query(sql,{status:req.body.status},function(err,roes){
-        if(err){
+    connection.query(sql, { status: req.body.status }, function (err, roes) {
+        if (err) {
             res.status(401).send({
-                message:"Error updating",
+                message: "Error updating",
                 err,
-                error:true
+                error: true
             });
             return;
         }
-        
+
         res.send({
-            message:"Updated records",
-            error:false
+            message: "Updated records",
+            error: false
         });
     })
 
@@ -1333,7 +1337,7 @@ app.put('/api/updateadvt/:id', [authJwt.verifyToken], urlencodedParser, function
         return;
     }
 
-   
+
 
     var fetchSql = "select * from advt_master where advt_id=?";
     connection.query(fetchSql, [req.params.id], function (err, rcds) {
@@ -1351,10 +1355,10 @@ app.put('/api/updateadvt/:id', [authJwt.verifyToken], urlencodedParser, function
             username: req.body.username,
             status: req.body.status,
             type: req.body.type.join(","),
-            country_id:req.body.country_id,
-            state_id:req.body.state_id,
-            district_id:req.body.district_id,
-            city_id:req.body.city_id,
+            country_id: req.body.country_id,
+            state_id: req.body.state_id,
+            district_id: req.body.district_id,
+            city_id: req.body.city_id,
             location_ids: req.body.location_ids.join(","),
             block_ids: req.body.block_ids.join(",")
         }
@@ -1382,23 +1386,23 @@ app.put('/api/updateadvt/:id', [authJwt.verifyToken], urlencodedParser, function
                             message: 'error updating record'
                         })
                     }
-                    else {                        
+                    else {
                         let advt_id = req.params.id;
                         let publish_date_query = 'insert into PUBLISH_DATE(advt_id,from_publish_date,to_publish_date) values ?';
                         let publish_date_record = [];
-                        if(req.type_of_user == 'CLIENT' && advtDetails.status == 'approved'){
-                            
+                        if (req.type_of_user == 'CLIENT' && advtDetails.status == 'approved') {
+
                             // publish(advtDetails);
                         }
                         req.body.publish_dates.forEach(date => {
                             publish_date_record.push([
                                 advt_id,
-                                 date.from_publish_date,
-                                 date.to_publish_date
+                                date.from_publish_date,
+                                date.to_publish_date
                             ]);
                         });
 
-                        console.log("publish_date_record",publish_date_record);
+                        console.log("publish_date_record", publish_date_record);
                         connection.query('delete from PUBLISH_DATE where advt_id = ?', [req.params.id],
                             function (err, rows) {
                                 if (err) {
@@ -1433,8 +1437,8 @@ app.put('/api/updateadvt/:id', [authJwt.verifyToken], urlencodedParser, function
                 })
             }
             else {
-                if(req.type_of_user == 'CLIENT' && advtDetails.status == 'approved'){
-                            
+                if (req.type_of_user == 'CLIENT' && advtDetails.status == 'approved') {
+
                     publish(advtDetails);
                 }
                 let advt_id = req.params.id;
@@ -1443,11 +1447,11 @@ app.put('/api/updateadvt/:id', [authJwt.verifyToken], urlencodedParser, function
                 req.body.publish_dates.forEach(date => {
                     publish_date_record.push([
                         advt_id,
-                         date.from_publish_date,
-                         date.to_publish_date
+                        date.from_publish_date,
+                        date.to_publish_date
                     ]);
                 });
-                console.log("publish_date_record",publish_date_record);
+                console.log("publish_date_record", publish_date_record);
                 connection.query('delete from PUBLISH_DATE where advt_id = ?', [req.params.id],
                     function (err, rows) {
                         if (err) {
@@ -1493,7 +1497,7 @@ app.delete('/api/deleteAdvt/:id', [authJwt.verifyToken], function (req, res) {
                     return;
                 }
 
-                res.send({message:'Record has been deleted'});
+                res.send({ message: 'Record has been deleted' });
             })
         }
     })
@@ -1530,8 +1534,8 @@ app.post('/api/login', urlencodedParser, function (req, res) {
                 var token = jwt.sign({
                     username: json[0].username
                 }, config.secret, {
-                        expiresIn: 86400 // expires in 24 hours
-                    });
+                    expiresIn: 86400 // expires in 24 hours
+                });
                 res.json({
                     status: 200,
                     message: 'successfully authenticated',
@@ -1620,3 +1624,105 @@ function getIndianTime(offset = '+5.5') {
     // return time as a string
     return nd;
 }
+
+app.post('/api/readExcel/add/user', function (req, res) {
+    console.log("reading Excel")
+    var workbook = XLSX.readFile('CARMEL CHILD.ods');
+    var sheet_name_list = workbook.SheetNames;
+    console.log("===", workbook.SheetNames)
+    var ws = workbook.Sheets['GOVINDPURI EXTN'];
+    var data = XLSX.utils.sheet_to_json(ws);
+    // data.shift();
+    console.log("**", data);
+    data.map(item => {
+        // const personDetails = {
+        //     name: item.NAME,
+        //     address: item['HOUSE NO.'],
+        //     mobile: item['MOBILE NO']
+        // }
+
+        var personDetails = {
+            firstname: item['NAME '] ? encryption.encrypt(item['NAME '].toString()) : '',
+            country_id: 1,
+            state_id: 27,
+            district_id: 11,
+            city_id: 24,
+            block_id: 61,
+            isMemberOf: 'AGGARWAL SABHA GOVINDPURI MEMBER LIST',
+            address: item['ADDRESS'] ? encryption.encrypt(item['ADDRESS'].toString()) : '',
+            location_id: 2,
+            mobile_number1: item['MOBILE'] ? encryption.encrypt(item['MOBILE'].toString()) : '',
+            username: 'lakhdeepkaur'
+        }
+        connection.query("INSERT INTO person_master SET ?", personDetails, function (err, result) {
+            console.log("inside")
+            if (err) {
+                console.log(err)
+                // return res.status(401).json({
+                //     message: err
+                // })
+            }
+            else {
+                console.log(result)
+                // return res.json({
+                //     status: 200,
+                //     message: "success"
+                // });
+            }
+        });
+    })
+    res.send({ message: "success", length: data.length })
+
+});
+
+app.get('/send/message/twilio', function (req, res, next) {
+    // console.log("==========sending message")
+    // client.messages.create({
+    //     body: "Happy Diwali",
+    //     from: '+12563056468',
+    //     to: '+91' + 7053282382
+    // })
+    //     .then(message => {
+
+    //         // console.log("************************",message);
+    //         obj.status = 'success';
+    //         connection.query(log_query, obj, function (err) {
+    //         });
+    //     }, err => {
+    //         console.log("************************ERRRR", err);
+    //         obj.status = 'failure';
+    //         connection.query(log_query, obj, function (err) {
+
+    //         });
+    //     });
+    voiceMessage(phone_number, function (err, data) {
+        let log_query = `insert into advt_publish_log set ?`;
+        console.log(JSON.stringify(err));
+        // console.log("*******************",advert);
+        let obj = {
+            advt_id: advert.advt_id,
+            client_user_name: advert.user_name,
+            admin_user_name: advert.admin_user_name,
+            subject: encryption.decrypt(advert.advt_subject),
+            message: encryption.decrypt(advert.advt_details),
+            from_publish_date: fromPublishDate.toISOString(),
+            to_publish_date: toPublishDate.toISOString(),
+            type: 'voice'
+        };
+        let phone_number = encryption.decrypt(person.mobile_number1);
+        obj.phone_number = '+91' + phone_number;
+
+        let status = "success";
+        if (err) {
+            status = "failure";
+        }
+
+        obj.status = status;
+        connection.query(log_query, obj, function (err) {
+
+        });
+
+    });
+
+})
+
