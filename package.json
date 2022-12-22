@@ -20,7 +20,7 @@
     "git": "^0.1.5",
     "googleapis": "^27.0.0",
     "heroku": "^7.19.4",
-    "jsonwebtoken": "^8.4.0",
+    "jsonwebtoken": "^9.0.0",
     "mysql": "^2.16.0",
     "nexmo": "^2.4.1",
     "node-cron": "^2.0.3",
